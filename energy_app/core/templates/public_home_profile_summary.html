@@ -1,0 +1,16 @@
+<h1>Summary</h1>
+
+<p>
+    Total daily consumption {{ total_energy_consumption }} kWh.
+</p>
+
+<p>
+    Detail per appliance:
+    <ul>
+	{% for appliances_stat in appliances_stats %}
+	<li>{{ appliances_stat.name }}: {{ appliances_stat.daily_power|floatformat }} kWh ({{ appliances_stat.percent|floatformat }}%)</li>
+	{% endfor %}
+    </ul>
+</p>
+
+<p>This summary will also be sent to {{ email }}.</p>

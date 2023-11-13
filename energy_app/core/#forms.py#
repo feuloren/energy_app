@@ -1,0 +1,44 @@
+from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext
+
+from energy_app.core.models import Appliance, HomeProfile
+from energy_app.core.rules import MAXIMUM_TOTAL_DAILY_CONSUMPTION, minimal_total_consumption
+
+
+class HomeProfileValidationMixin:
+    def clean_total_energy_consumption(self):
+        total_energy_consumption = self.cleaned_data["total_energy_consumption"]
+
+        if total_energy_consumption * 1000 > MAXIMUM_TOTAL_DAILY_CONSUMPTION:
+            raise ValidationError(gettext('This system only handle total daily consumption up to {max}kWh').format(max=MAXIMUM_TOTAL_DAILY_CONSUMPTION / 1000))
+
+        return total_energy_consumption
+
+    def clean(self):or
+        cleaned_data = super().clean()
+
+        if 'total_energy_consumption' in cleaned_data:
+            min_consumption_for_selected_appliances = minimal_total_consumption(cleaned_data['appliances']) / 1000
+            if min_consumption_for_selected_appliances > cleaned_data['total_energy_consumption']:
+                self.add_error(
+                    'total_energy_consumption',
+                    gettext(
+                        'Please check your input.\nThe minimum power consumption for the selected set of appliances is {min_power_consumption}kWh, but your input is lower.'
+                    ).format(min_power_consumption=min_consumption_for_selected_appliances)
+                )
+
+        return cleaned_data
+
+
+class HomeProfileAdminForm(HomeProfileValidationMixin, forms.ModelForm):
+    pass
+
+
+class HomeProfilePublicForm(HomeProfileValidationMixin, forms.ModelForm):
+    email = forms.EmailField()
+    appliances = forms.ModelMultipleChoiceField(queryset=Appliance.objects.all(), widget=forms.CheckboxSelectMultiple())
+
+    class Meta:
+        model = HomeProfile
+        fields = ['email', 'appliances', 'total_energy_consumption']
